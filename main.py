@@ -200,7 +200,7 @@ def make():
                 x_max = int(max(x) + width / 3)
                 x_min = int(min(x) - width / 3)
                 size = ((x_max - x_min), (y_max - y_min))
-                mask = Image.open('pic/mask3.png')
+                mask = Image.open('pic/Mask3.png')
                 adding = mask.resize(size)
                 im = Image.fromarray(im1[:, :, ::-1])  # 切换RGB格式
                 # 在合适位置添加图层
