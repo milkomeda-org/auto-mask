@@ -38,10 +38,10 @@ RUN apt-get -y update
 RUN apt-get install -y build-essential cmake
 # for opencv
 RUN apt-get install -y libopencv-dev
-RUN pip install -r requirements.txt
 
 WORKDIR /app
 ADD . /app
+RUN pip install -r requirements.txt
 ADD http://dlib.net/files/shape_predictor_68_face_landmarks.dat.bz2 /app
 RUN bzip2 -d /app/shape_predictor_68_face_landmarks.dat.bz2 /app/shape_predictor_68_face_landmarks.dat
 EXPOSE 1234
