@@ -1,14 +1,48 @@
 FROM centos:7
-# Install Python 3.6
-RUN yum -y install https://centos7.iuscommunity.org/ius-release.rpm && \
-    yum -y install python36u && \
-    yum -y install python36u-pip && \
-    yum -y install vim && \
-    yum clean all  &&  rm -rf /var/cache/yum
+MAINTAINER vinson
+# Install Python
+RUN set -ex \
+    # 预安装所需组件
+    && yum install -y wget tar libffi-devel zlib-devel bzip2-devel openssl-devel ncurses-devel sqlite-devel readline-devel tk-devel gcc make gcc-c++ initscripts \
+    && wget https://www.python.org/ftp/python/3.6.10/Python-3.6.10.tgz \
+    && tar -zxvf Python-3.6.10.tgz \
+    && cd Python-3.6.10 \
+    && ./configure prefix=/usr/local/python3 \
+    && make \
+    && make install \
+    && make clean \
+    && rm -rf /Python-3.6.10* \
+    && yum install -y epel-release \
+    && yum install -y python-pip \
+# 设置默认为python3
+    # 备份旧版本python
+    && mv /usr/bin/python /usr/bin/python27 \
+    && mv /usr/bin/pip /usr/bin/pip-python27 \
+    # 配置默认为python3
+    && ln -s /usr/local/python3/bin/python3.6 /usr/bin/python \
+    && ln -s /usr/local/python3/bin/pip3 /usr/bin/pip \
+# 修复因修改python版本导致yum失效问题
+    && sed -i "s#/usr/bin/python#/usr/bin/python27#" /usr/bin/yum \
+    && sed -i "s#/usr/bin/python#/usr/bin/python27#" /usr/libexec/urlgrabber-ext-down \
+    && yum install -y deltarpm \
+# 基础环境配置
+    # 修改系统时区为东八区
+    && rm -rf /etc/localtime \
+    && ln -s /usr/share/zoneinfo/Asia/Shanghai /etc/localtime \
+    && yum install -y vim \
+    # 安装定时任务组件
+    && yum -y install cronie \
+# 支持中文
+    && yum install kde-l10n-Chinese -y \
+    && localedef -c -f UTF-8 -i zh_CN zh_CN.utf8 \
+# 更新pip版本 安装pip包
+    && pip install --upgrade pip \
+    && pip install pyltp -i http://mirrors.aliyun.com/pypi/simple/   --trusted-host mirrors.aliyun.com
+ENV LC_ALL zh_CN.UTF-8
 
-RUN pip3.6 --no-cache-dir install -r requirements.txt \
+RUN pip --no-cache-dir install -r requirements.txt \
         && \
-    python3.6 -m ipykernel.kernelspec
+    python -m ipykernel.kernelspec
 # Install opencv-python
 RUN yum -y install libSM-1.2.2-2.el7.x86_64 --setopt=protected_multilib=false  && \
     yum install ksh -y  && \
@@ -28,7 +62,7 @@ RUN yum -y install libSM-1.2.2-2.el7.x86_64 --setopt=protected_multilib=false  &
     yum install xterm -y  && \
     yum clean all  &&  rm -rf /var/cache/yum
 
-RUN pip3.6 --no-cache-dir install opencv-python==3.4.1.15
+RUN pip --no-cache-dir install opencv-python==3.4.1.15
 
 # Install dlib
 RUN yum -y groupinstall "Development tools"  && \
@@ -41,10 +75,10 @@ RUN yum search python3 | grep devel  && \
     yum install -y python36u-devel.x86_64  && \
     yum clean all  # &&  rm -rf /var/cache/yum
 
-RUN pip3.6 --no-cache-dir install dlib
+RUN pip --no-cache-dir install dlib
 
 WORKDIR /app
 ADD . /app
 EXPOSE 1234
 ENV NAME DEV
-CMD ["python3.6","main.py"]
+CMD ["python","main.py"]
