@@ -43,6 +43,7 @@ WORKDIR /app
 ADD . /app
 RUN pip install -r requirements.txt
 ADD http://dlib.net/files/shape_predictor_68_face_landmarks.dat.bz2 /app
+RUN rm -rf /app/shape_predictor_68_face_landmarks.dat
 RUN bzip2 -d /app/shape_predictor_68_face_landmarks.dat.bz2 /app/shape_predictor_68_face_landmarks.dat
 EXPOSE 1234
 ENV NAME World
