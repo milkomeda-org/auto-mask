@@ -47,4 +47,4 @@ WORKDIR /app
 ADD . /app
 EXPOSE 1234
 ENV NAME DEV
-CMD ["python","main.py"]
+CMD ["python3.6","main.py"]
