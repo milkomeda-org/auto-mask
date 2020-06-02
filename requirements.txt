@@ -1,2 +1,5 @@
+numpy~=1.18.4
+opencv-python~=4.2.0.34
 pillow~=7.1.2
+dlib~=19.8.1
 flask~=1.1.2
