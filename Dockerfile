@@ -33,18 +33,15 @@
 ###########################
 FROM python:3.6-slim
 MAINTAINER vinson
-
-WORKDIR /app
-ADD . /app
-RUN apt-get -y wget bzip2
-RUN wget http://dlib.net/files/shape_predictor_68_face_landmarks.dat.bz2 | bzip2 -d shape_predictor_68_face_landmarks.dat /app
-
 RUN apt-get -y update
 # for dlib
 RUN apt-get install -y build-essential cmake
 # for opencv
 RUN apt-get install -y libopencv-dev
 
+WORKDIR /app
+ADD . /app
+ADD http://dlib.net/files/shape_predictor_68_face_landmarks.dat.bz2 /app
 RUN pip install -r requirements.txt
 EXPOSE 1234
 ENV NAME World
