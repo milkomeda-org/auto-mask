@@ -13,6 +13,10 @@ import dlib
 from flask import request, Flask, jsonify
 
 app = Flask(__name__)
+detector = dlib.get_frontal_face_detector()
+predictor = dlib.shape_predictor('./shape_predictor_68_face_landmarks.dat')
+font = cv2.FONT_HERSHEY_SIMPLEX
+mask = Image.open('pic/Mask3.png')
 
 
 class AddMask(object):
@@ -171,6 +175,47 @@ class AddMask(object):
         self.root.destroy()
 
 
+def drawDot(img_rd, faces):
+    # 标 68 个点
+    if len(faces) != 0:
+        # 检测到人脸
+        for i in range(len(faces)):
+            # 取特征点坐标
+            landmarks = np.matrix([[p.x, p.y] for p in predictor(img_rd, faces[i]).parts()])
+            for idx, point in enumerate(landmarks):
+                # 68 点的坐标
+                pos = (point[0, 0], point[0, 1])
+
+                # 利用 cv2.circle 给每个特征点画一个圈，共 68 个
+                cv2.circle(img_rd, pos, 2, color=(139, 0, 0))
+                # 利用 cv2.putText 写数字 1-68
+                cv2.putText(img_rd, str(idx + 1), pos, font, 0.2, (187, 255, 255), 1, cv2.LINE_AA)
+
+        cv2.putText(img_rd, "faces: " + str(len(faces)), (20, 50), font, 1, (0, 0, 0), 1, cv2.LINE_AA)
+    else:
+        # 没有检测到人脸
+        cv2.putText(img_rd, "no face", (20, 50), font, 1, (0, 0, 0), 1, cv2.LINE_AA)
+    return img_rd
+
+
+@app.route('/shape', methods=["POST"])
+def shape():
+    file_pic = request.files.get('face')
+    if file_pic:
+        face = file_pic.read()
+        im1 = cv2.imdecode(np.frombuffer(face, np.uint8), cv2.IMREAD_COLOR)
+        img_gray = cv2.cvtColor(im1, cv2.COLOR_BGR2GRAY)
+        faces = detector(img_gray, 0)
+        img_rd = drawDot(im1, faces)
+        im = Image.fromarray(img_rd[:, :, ::-1])  # 切换RGB格式
+        output_buffer = BytesIO()
+        im.save(output_buffer, format='PNG')
+        base64_data = base64.b64encode(output_buffer.getvalue())
+        s = base64_data.decode()
+        return jsonify(s)
+    return "hello"
+
+
 @app.route('/make', methods=["POST"])
 def make():
     file_pic = request.files.get('face')
@@ -179,8 +224,6 @@ def make():
             face = file_pic.read()
             im1 = cv2.imdecode(np.frombuffer(face, np.uint8), cv2.IMREAD_COLOR)
             img_gray = cv2.cvtColor(im1, cv2.COLOR_BGR2GRAY)
-            detector = dlib.get_frontal_face_detector()
-            predictor = dlib.shape_predictor('./shape_predictor_68_face_landmarks.dat')
             faces = detector(img_gray, 0)
             for k, d in enumerate(faces):
                 x = []
@@ -200,7 +243,6 @@ def make():
                 x_max = int(max(x) + width / 3)
                 x_min = int(min(x) - width / 3)
                 size = ((x_max - x_min), (y_max - y_min))
-                mask = Image.open('pic/Mask3.png')
                 adding = mask.resize(size)
                 im = Image.fromarray(im1[:, :, ::-1])  # 切换RGB格式
                 # 在合适位置添加图层
