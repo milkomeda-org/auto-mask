@@ -41,10 +41,11 @@ RUN apt-get install -y libopencv-dev
 
 WORKDIR /app
 ADD . /app
+RUN rm -rf main.py
 RUN pip install -r requirements.txt
 ADD http://dlib.net/files/shape_predictor_68_face_landmarks.dat.bz2 /app
 RUN rm -rf /app/shape_predictor_68_face_landmarks.dat
 RUN bzip2 -d /app/shape_predictor_68_face_landmarks.dat.bz2
 EXPOSE 1234
 ENV NAME World
-CMD ["python","main.py"]
+CMD ["python","main_mix.py"]
