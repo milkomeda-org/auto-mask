@@ -1,5 +1,6 @@
-#byvinson
+# byvinson
 import base64
+import math
 import sys
 from io import BytesIO
 
@@ -17,7 +18,7 @@ app = Flask(__name__)
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor('./shape_predictor_68_face_landmarks.dat')
 font = cv2.FONT_HERSHEY_SIMPLEX
-mask = Image.open('pic/Mask3.png')
+mask = Image.open('pic/Mask5.png')
 
 
 class AddMask(object):
@@ -199,6 +200,38 @@ def drawDot(img_rd, faces):
     return img_rd
 
 
+# 计算两点角度
+def calc_angle(x1, y1, x2, y2):
+    x = abs(x1 - x2)
+    y = abs(y1 - y2)
+    z = math.sqrt(x * x + y * y)
+    angle = round(math.asin(y / z) / math.pi * 180)
+    return angle
+
+
+# 旋转图片
+def rotate_bound(image, angle):
+    # 获取图像的尺寸
+    # 旋转中心
+    (h, w) = image.shape[:2]
+    (cx, cy) = (w / 2, h / 2)
+
+    # 设置旋转矩阵
+    M = cv2.getRotationMatrix2D((cx, cy), -angle, 1.0)
+    cos = np.abs(M[0, 0])
+    sin = np.abs(M[0, 1])
+
+    # 计算图像旋转后的新边界
+    nW = int((h * sin) + (w * cos))
+    nH = int((h * cos) + (w * sin))
+
+    # 调整旋转矩阵的移动距离（t_{x}, t_{y}）
+    M[0, 2] += (nW / 2) - cx
+    M[1, 2] += (nH / 2) - cy
+
+    return cv2.warpAffine(image, M, (nW, nH))
+
+
 @app.route('/shape', methods=["POST"])
 def shape():
     file_pic = request.files.get('face')
@@ -214,7 +247,7 @@ def shape():
         base64_data = base64.b64encode(output_buffer.getvalue())
         s = base64_data.decode()
         return jsonify(s)
-    return "hello"
+    return jsonify({"code": 400})
 
 
 @app.route('/make', methods=["POST"])
@@ -238,16 +271,28 @@ def make():
                 for i in range(48, 68):
                     x.append(shape.part(i).x)
                     y.append(shape.part(i).y)
-                # 根据人脸的大小扩大嘴唇对应口罩的区域
+                # 左至k5，右至k13，上至k31，下至k9
                 y_max = int(max(y) + height / 3)
                 y_min = int(min(y) - height / 3)
                 x_max = int(max(x) + width / 3)
                 x_min = int(min(x) - width / 3)
                 size = ((x_max - x_min), (y_max - y_min))
                 adding = mask.resize(size)
+                angle = calc_angle(shape.part(48).x, shape.part(48).y, shape.part(54).x, shape.part(54).y)
+                # y1大为逆时针，否则为顺时针
+                if 0 != angle:
+                    if shape.part(48).y < shape.part(54).y:
+                        angle = -angle
+                    adding = adding.rotate(angle)
+
+                # 创建全白的mask
+                # m = cv2.cvtColor(np.asarray(adding), cv2.COLOR_RGB2BGR)
+                # mm = 255 * np.ones(m.shape, m.dtype)
+                # gg = cv2.seamlessClone(m, im1, mm, (int(x_min), int(y_min)), cv2.NORMAL_CLONE)
+
                 im = Image.fromarray(im1[:, :, ::-1])  # 切换RGB格式
                 # 在合适位置添加图层
-                im.paste(adding, (int(x_min), int(y_min)), adding)
+                im.paste(adding, (x_min, y_min), adding)
                 output_buffer = BytesIO()
                 im.save(output_buffer, format='PNG')
                 base64_data = base64.b64encode(output_buffer.getvalue())
@@ -255,7 +300,7 @@ def make():
                 return jsonify({"code": 200, "format": "PNG", "data": s})
         except():
             return jsonify({"code": 500})
-    return "hello"
+    return jsonify({"code": 400})
 
 
 if __name__ == '__main__':
